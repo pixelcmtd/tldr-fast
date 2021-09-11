@@ -1,7 +1,6 @@
 /*
- * parser.c - parsing of pages
- *
  * Copyright (C) 2016 Arvid Gerstmann
+ * Copyright (C) 2021 P. C. Häußler
  *
  * This software may be modified and distributed under the terms
  * of the MIT license.  See the LICENSE file for details.
@@ -194,22 +193,7 @@ print_tldrpage(char const *input, char const *poverride)
         }
     }
 
-    construct_url(url, URLBUFSIZ, input, platform);
-
-    /* make clang's static analyzer happy */
-    output = NULL;
-    download_content(url, &output, 0);
-    if (output == NULL) {
-        construct_url(url, URLBUFSIZ, input, "common");
-        download_content(url, &output, 0);
-        if (output == NULL)
-            return 1;
-    }
-
-    parse_tldrpage(output);
-
-    free(output);
-    return 0;
+    return 1;
 }
 
 int
