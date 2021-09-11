@@ -2,33 +2,17 @@
 
 [![Build Status](https://img.shields.io/github/workflow/status/tldr-pages/tldr-c-client/Tests.svg?style=flat-square)](https://github.com/tldr-pages/tldr-c-client/actions)
 
-A command line client for tldr, written in plain ISO C90.
-
+A command line client for tldr, written in C.
 
 ## Installing
 
-On OS X, the client can be installed through [homebrew](http://brew.sh/).
-
-```
-# To install latest development version
-brew install tldr --HEAD
-
-# To install the latest stable release
-brew install tldr
-```
-
 To build the latest version from source:
-```
-git clone https://github.com/tldr-pages/tldr-c-client.git
-cd tldr-c-client
 
-./deps.sh           # install dependencies
-make                # build tldr
-make install        # install tldr
-```
+- Git clone
+- Install dependencies (`./deps.sh`)
+- `make install`
 
-The default prefix for installation is `/usr/local/bin`.
-
+The default prefix for installation is `/usr/local`.
 
 ## Building
 
@@ -36,7 +20,7 @@ Building the `tldr` client is pretty straightforward.
 
 #### Requirements
 
-- `clang`/`gcc`
+- `cc`
 - `libcurl` (`brew install curl` / `apt-get install libcurl-dev` / `apt-get install libcurl4-openssl-dev`)
 - `libzip` (`brew install libzip` / `apt-get install libzip-dev`)
 - `pkg-config` (`brew install pkg-config` / `apt-get install pkg-config`)
