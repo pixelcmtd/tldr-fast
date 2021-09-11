@@ -1,124 +1,56 @@
-# General
-CC			= gcc
-LD			= gcc
-RM			= rm -rf
-RMDIR		= rmdir
-INSTALL		= install
+VER      ?= v0.1
 
-# Config
-TARGET		= tldr
-SRCDIR		= src
-OBJDIR		= obj
-BINDIR		= .
-MANDIR		= man
+CC       ?= cc
+LD       ?= $(CC)
+RM       ?= rm -rf
+INSTALL  ?= install
 
-# CFLAGS, LDFLAGS, CPPFLAGS, PREFIX can be overriden on CLI
-CFLAGS		:= -ggdb -O0 -ftrapv
-CPPFLAGS	:=
-LDFLAGS		:=
-PREFIX		:= /usr/local
-TARGET_ARCH :=
+CFLAGS ?= -O3 -Wall -Wextra -pedantic
+CFLAGS += -DVERSION='"$(VER)"'
+CFLAGS += $(shell pkg-config --cflags libzip)
+CFLAGS += -I/usr/include
+CFLAGS += -I/usr/local/include
+CFLAGS += -I/usr/local/opt/curl/include
+CFLAGS += -I/usr/local/opt/libzip/include
 
+PREFIX  ?= /usr/local
 
-# Compiler Flags
-ALL_CFLAGS		:= $(CFLAGS)
-ALL_CFLAGS		+= -Wall -Wextra -pedantic
-ALL_CFLAGS		+= -fno-strict-aliasing
-ALL_CFLAGS		+= -Wuninitialized -Winit-self -Wfloat-equal
-ALL_CFLAGS		+= -Wshadow -Wc++-compat -Wcast-qual -Wcast-align
-ALL_CFLAGS		+= -Wconversion -Wsign-conversion -Wno-cast-qual
-ALL_CFLAGS		+= -Wno-multichar -Wpacked -Wstrict-overflow -Wvla
-ALL_CFLAGS		+= -Wformat -Wno-format-zero-length -Wstrict-prototypes
-ifeq ($(CC),clang)
-ALL_CFLAGS		+= -Wno-unknown-warning-option
-endif
-
-# Version Generation
-HAS_GIT			:= $(shell type git > /dev/null 2>&1 && echo "1" || echo "0")
-IS_GITREPO		:= $(shell [ -d .git ] && echo "1" || echo "0")
-ifeq (0,$(filter 0,$(HAS_GIT) $(IS_GITREPO)))
-VER				:= v1.3.0
-else
-VER				:= $(shell git describe --tags --always --dirty)
-endif
-
-# Preprocessor Flags
-ALL_CPPFLAGS	:= $(CPPFLAGS) -DVERSION='"$(VER)"'
-ALL_CPPFLAGS	+= -D_GNU_SOURCE
-ALL_CPPFLAGS	+= $(shell pkg-config --cflags libzip)
-ALL_CPPFLAGS	+= -I/usr/include
-ALL_CPPFLAGS	+= -I/usr/local/include
-ALL_CPPFLAGS	+= -I/usr/local/opt/curl/include
-ALL_CPPFLAGS	+= -I/usr/local/opt/libzip/include
-
-# Linker Flags
-ALL_LDFLAGS		:= $(LDFLAGS) -L/usr/lib
-ALL_LDFLAGS		+= -L/usr/local/lib
-ALL_LDFLAGS		+= -L/usr/local/opt/curl/lib
-ALL_LDFLAGS		+= -L/usr/local/opt/libzip/lib
-ALL_LDLIBS		:= -lc -lm -lcurl -lzip
-
+LDFLAGS += -L/usr/local/lib
+LDFLAGS += -L/opt/local/lib
+LDFLAGS += -L/opt/homebrew/lib
+LDFLAGS += -lc -lm -lcurl -lzip
 
 # Source, Binaries, Dependencies
-SRC			:= $(shell find $(SRCDIR) -type f -name '*.c')
-OBJ			:= $(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(SRC:.c=.o))
-DEP			:= $(OBJ:.o=.d)
-BIN			:= $(BINDIR)/$(TARGET)
+SRC   := $(wildcard src/*.c)
+OBJ   := $(patsubst src/%,obj/%,$(SRC:.c=.o))
+DEP   := $(OBJ:.o=.d)
+BIN   := tldr
 -include $(DEP)
 
 # Man Pages
-MANSRC		:= $(shell find $(MANDIR) -type f -name '*.1')
-MANPATH		:= $(PREFIX)/share/man/man1
+MANSRC  := man/tldr.1
+MANPATH := $(PREFIX)/share/man/man1
 
+REAL_CC  := $(CC)
+CC   = @echo "CC $<"; $(REAL_CC)
 
-# Verbosity Control, ala automake
-V 			= 0
+REAL_LD  := $(LD)
+LD   = @echo "LD $@"; $(REAL_LD)
 
-# Verbosity for CC
-REAL_CC 	:= $(CC)
-CC_0 		= @echo "CC $<"; $(REAL_CC)
-CC_1 		= $(REAL_CC)
-CC 			= $(CC_$(V))
+.PHONY: all clean format lint infer
+.DEFAULT_GOAL = all
 
-# Verbosity for LD
-REAL_LD 	:= $(LD)
-LD_0 		= @echo "LD $@"; $(REAL_LD)
-LD_1 		= $(REAL_LD)
-LD 			= $(LD_$(V))
-
-# Verbosity for RM
-REAL_RM 	:= $(RM)
-RM_0 		= @echo "Cleaning..."; $(REAL_RM)
-RM_1 		= $(REAL_RM)
-RM 			= $(RM_$(V))
-
-# Verbosity for RMDIR
-REAL_RMDIR 	:= $(RMDIR)
-RMDIR_0 	= @$(REAL_RMDIR)
-RMDIR_1 	= $(REAL_RMDIR)
-RMDIR 		= $(RMDIR_$(V))
-
-
-
-# Build Rules
-.PHONY: clean format lint infer
-.DEFAULT_GOAL := all
-
-all: setup $(BIN)
-setup: dir
-remake: clean all
+all: dir $(BIN)
 
 dir:
-	@mkdir -p $(OBJDIR)
-	@mkdir -p $(BINDIR)
-
+	@mkdir -p obj
 
 $(BIN): $(OBJ)
-	$(LD) $(ALL_LDFLAGS) $^ $(ALL_LDLIBS) -o $@
+	$(LD) $(LDFLAGS) $^ -o $@
+	strip $@
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) -c -MMD -MP -o $@ $<
-
+obj/%.o: src/%.c
+	$(CC) $(CFLAGS) -c -MMD -MP -o $@ $<
 
 install: all $(MANSRC)
 	$(INSTALL) -d $(PREFIX)/bin
@@ -127,12 +59,10 @@ install: all $(MANSRC)
 	$(INSTALL) $(MANSRC) $(MANPATH)
 
 clean:
-	$(RM) $(OBJ) $(DEP) $(BIN)
-	$(RMDIR) $(OBJDIR) $(BINDIR) 2> /dev/null; true
+	rm -rf obj/ $(DEP) $(BIN)
 
 format:
-	astyle --options=.astylerc $(SRCDIR)/*.c
-	astyle --options=.astylerc $(SRCDIR)/*.h
+	astyle --options=.astylerc src/*.c src/*.h
 
 lint:
 	oclint -report-type html -o report.html \
@@ -142,13 +72,13 @@ lint:
 		-max-priority-1 1000 \
 		-max-priority-2 1000 \
 		-max-priority-3 1000 \
-		src/*.c src/*.h -- $(ALL_CPPFLAGS) -c
+		src/*.c src/*.h -- $(CFLAGS) -c
 	cppcheck --enable=all \
 		-I/usr/local/include \
 		-I/usr/local/opt/curl/include \
 		-I/usr/local/opt/libzip/include \
 		--language=c \
-		--std=c89 \
+		--std=c99 \
 		--inconclusive \
 		src/*.c src/*.h
 	splint +posixlib +gnuextensions \
@@ -174,5 +104,3 @@ lint:
 
 infer: clean
 	infer -- make
-
-
